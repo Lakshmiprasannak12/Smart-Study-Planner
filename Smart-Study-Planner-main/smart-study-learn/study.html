@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Study Planner</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #fff;
+      background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c'); /* background image added */
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      transition: background 0.5s ease-in-out;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px;
+      font-size: 2rem;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.6);
+      letter-spacing: 1px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 30px auto;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+    }
+
+    .task-input {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    input, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    input[type="text"], input[type="date"] {
+      flex: 1;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #00c6ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #e5a0d7;
+      transform: scale(1.05);
+    }
+
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .task {
+      background: #ffffff30;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.5s ease-in;
+      cursor: grab;
+    }
+    .task:hover {
+      background: #ffffff8a;
+      transform: scale(1.05);
+    }
+
+    .task span {
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .task.completed span {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .task:active {
+      cursor: grabbing;
+    }
+
+    .delete-btn {
+      background: transparent;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-left: 10px;
+      font-size: 2rem; /* larger delete symbol */
+      cursor: pointer;
+    }
+
+    .delete-btn:hover {
+      background: #ffffff8a;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header>📖 Smart Study Planner 👩‍💻</header>
+
+  <div class="container">
+    <div class="task-input">
+      <input type="text" id="taskInput" placeholder="Enter study task...">
+      <input type="date" id="deadlineInput">
+      <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <ul id="taskList" class="task-list"></ul>
+  </div>
+
+  <script>
+    const taskInput = document.getElementById('taskInput');
+    const deadlineInput = document.getElementById('deadlineInput');
+    const taskList = document.getElementById('taskList');
+
+    // Load saved tasks
+    window.onload = () => {
+      const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      savedTasks.forEach(task => renderTask(task.text, task.deadline, task.completed));
+    };
+
+    function addTask() {
+      const taskText = taskInput.value.trim();
+      const deadline = deadlineInput.value;
+
+      if (!taskText) {
+        alert("Please enter a task!");
+        return;
+      }
+
+      renderTask(taskText, deadline, false);
+      saveTasks();
+
+      taskInput.value = "";
+      deadlineInput.value = "";
+    }
+
+    function renderTask(text, deadline, completed = false) {
+      const li = document.createElement('li');
+      li.className = "task";
+      li.draggable = true;
+      if (completed) li.classList.add("completed");
+
+      const checkbox = document.createElement('input');
+      checkbox.type = "checkbox";
+      checkbox.checked = completed;
+      checkbox.onchange = () => {
+        li.classList.toggle("completed");
+        saveTasks();
+      };
+
+      const taskContent = document.createElement('span');
+      taskContent.innerText = deadline ? `${text} (📅 ${deadline})` : text;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = "delete-btn";
+      deleteBtn.innerHTML = "🚮"; // delete symbol
+      deleteBtn.onclick = () => {
+        li.remove();
+        saveTasks();
+      };
+
+      li.appendChild(checkbox);
+      li.appendChild(taskContent);
+      li.appendChild(deleteBtn);
+      taskList.appendChild(li);
+
+      enableDragAndDrop();
+    }
+
+    function saveTasks() {
+      const tasks = [];
+      document.querySelectorAll('.task').forEach(task => {
+        const content = task.querySelector('span').innerText;
+        const match = content.match(/^(.*?) \(📅 (.*?)\)$/);
+        const completed = task.classList.contains("completed");
+        if (match) {
+          tasks.push({ text: match[1], deadline: match[2], completed });
+        } else {
+          tasks.push({ text: content, deadline: "", completed });
+        }
+      });
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function enableDragAndDrop() {
+      const tasks = document.querySelectorAll('.task');
+
+      tasks.forEach(task => {
+        task.addEventListener('dragstart', () => {
+          task.classList.add('dragging');
+        });
+
+        task.addEventListener('dragend', () => {
+          task.classList.remove('dragging');
+          saveTasks();
+        });
+      });
+
+      taskList.addEventListener('dragover', e => {
+        e.preventDefault();
+        const dragging = document.querySelector('.dragging');
+        const afterElement = getDragAfterElement(taskList, e.clientY);
+        if (afterElement == null) {
+          taskList.appendChild(dragging);
+        } else {
+          taskList.insertBefore(dragging, afterElement);
+        }
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+  </script>
+</body>
+</html>
